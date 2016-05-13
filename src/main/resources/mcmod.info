@@ -1,0 +1,16 @@
+[
+{
+  "modid": "moderngl",
+  "name": "ModernGL",
+  "description": "An experiment into using modern GL in Minecraft mods.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["WeAthFolD"],
+  "credits": "http://learnopengl.com",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
