@@ -5,6 +5,7 @@ import com.google.common.collect.Multimap;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,11 @@ public class ObjModel {
         public Vertex(Vector3f pos, Vector2f uv) {
             this.pos = pos;
             this.uv = uv;
+        }
+
+        public void store(FloatBuffer buffer) {
+            pos.store(buffer);
+            uv.store(buffer);
         }
     }
 

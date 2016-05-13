@@ -167,6 +167,25 @@ public class ObjParser {
             this.vert = vert;
             this.tex = tex;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            VertexIdt vertexIdt = (VertexIdt) o;
+
+            if (vert != vertexIdt.vert) return false;
+            return tex == vertexIdt.tex;
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = vert;
+            result = 31 * result + tex;
+            return result;
+        }
     }
 
 }
