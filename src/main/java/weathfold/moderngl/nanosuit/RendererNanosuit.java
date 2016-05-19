@@ -32,7 +32,7 @@ import static org.lwjgl.opengl.GL30.*;
 
 public class RendererNanosuit extends TileEntitySpecialRenderer {
 
-    private static final int sampleSize = 6;
+    private static final int sampleSize = 8;
     private static final int sampleArea = sampleSize * sampleSize * sampleSize;
 
     private final ObjModel model;
@@ -80,7 +80,7 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
         posLightmap = shader.getUniformLocation("uTexLightmap");
 
         glUseProgram(shader.getProgramID());
-        glUniform1i(posTexDiffuse, 0);
+        glUniform1i(posTexDiffuse, 1);
         glUniform1i(posLightSample, 0);
         glUniform3f(posLightTexSize, sampleSize, sampleSize, sampleSize);
         glUniform1f(shader.getUniformLocation("uScale"), 0.15f);
@@ -96,7 +96,6 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
         newTexGroup("hands", "hand");
 
         lightSampleTex = glGenTextures();
-
         glBindTexture(GL_TEXTURE_3D, lightSampleTex);
 
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -143,9 +142,9 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
             FloatBuffer buf = BufferUtils.createFloatBuffer(4 * 4);
             buf.put(new float[] {
                     0, 0, 0, 0,
-                    0, s, 0, 1,
-                    s, s, 1, 1,
-                    s, 0, 1, 0
+                    0, s, 0, 2,
+                    s, s, 2, 2,
+                    s, 0, 2, 0
             });
             buf.flip();
             glBufferData(GL_ARRAY_BUFFER, buf, GL_STATIC_DRAW);
@@ -254,7 +253,12 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
         mvpMatrix.store(buffer);
         buffer.flip();
 
-        { // Debug
+        glActiveTexture(GL_TEXTURE1);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        int bound = glGetInteger(GL_TEXTURE_BINDING_2D);
+
+        if (false) { // Debug
 
             glUseProgram(shaderLightmapTest.getProgramID());
             glUniform1i(shaderLightmapTest.getUniformLocation("lightTexSample"), 1);
@@ -271,20 +275,13 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
 
         }
 
-
         // Bind the shader
         glUseProgram(shader.getProgramID());
 
-        glActiveTexture(GL_TEXTURE1);
-        int bound = glGetInteger(GL_TEXTURE_BINDING_2D);
-
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, bound);
-        // texManager().bindTexture(texGroups.get("Visor").diff);
-
         glActiveTexture(GL_TEXTURE0);
 
-        glUniform1i(posLightmap, 2);
+        glUniform1i(posLightmap, 1);
+        glUniform1i(posTexDiffuse, 2);
 
         // Upload uniform
         glUniformMatrix4(posMVPMatrix, false, buffer);
@@ -302,7 +299,11 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
                 continue;
             }
 
+            // textureManager.bindTexture(texs.diff);
+            glActiveTexture(GL_TEXTURE2);
             textureManager.bindTexture(texs.diff);
+            glActiveTexture(GL_TEXTURE0);
+
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBOs.get(group));
             glDrawElements(GL_TRIANGLES, model.faces.get(group).size() * 3, GL_UNSIGNED_INT, 0);
         }
@@ -317,10 +318,8 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
     }
 
     private void updateLightMap(World world, int x0, int y0, int z0) {
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(sampleArea * 2);
+        FloatBuffer buffer = BufferUtils.createFloatBuffer(sampleArea * 4);
         final int halfSize = sampleSize / 2;
-
-        float maxBrightness = -1;
 
         for (int zz = 0; zz < sampleSize; ++zz) {
             for (int yy = 0; yy < sampleSize; ++yy) {
@@ -332,16 +331,17 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
                     int k = i / 65536;
 
                     // buffer.put(brightness);
-                    buffer.put(j / 240.0f).put(k / 240.0f);
+                    buffer.put(j / 240.0f).put(k / 240.0f).put(0);
+                    // buffer.put(1).put(0).put(1);
                 }
             }
         }
         buffer.flip();
 
         glBindTexture(GL_TEXTURE_3D, lightSampleTex);
-        glTexImage3D(GL_TEXTURE_3D, 0, GL_RG,
+        glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB,
                 sampleSize, sampleSize, sampleSize,
-                0, GL_RG, GL_FLOAT, buffer);
+                0, GL_RGB, GL_FLOAT, buffer);
     }
 
 }
