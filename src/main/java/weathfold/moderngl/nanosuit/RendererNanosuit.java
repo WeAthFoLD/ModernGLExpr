@@ -1,7 +1,5 @@
 package weathfold.moderngl.nanosuit;
 
-import net.minecraft.client.renderer.OpenGlHelper;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.tileentity.TileEntity;
@@ -48,8 +46,8 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
 
     private boolean init = false;
 
-    private final int posMVPMatrix, posTexDiffuse,
-            posLightSample, posLightTexSize, posLightmap;
+    private final int posMVPMatrix, posWorldMatrix, posTexDiffuse,
+            posLightSample, posLightTexSize, posLightmap, posNormal;
 
     private Matrix4f
             modelViewMatrix = new Matrix4f(),
@@ -74,10 +72,12 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
         shaderLightmapTest.compile();
 
         posMVPMatrix = shader.getUniformLocation("uMVPMatrix");
+        posWorldMatrix = shader.getUniformLocation("uWorldMatrix");
         posTexDiffuse = shader.getUniformLocation("uTexDiffuse");
         posLightSample = shader.getUniformLocation("uTexLightSample");
         posLightTexSize = shader.getUniformLocation("uLightTexSize");
         posLightmap = shader.getUniformLocation("uTexLightmap");
+        posNormal = shader.getUniformLocation("uTexNormal");
 
         glUseProgram(shader.getProgramID());
         glUniform1i(posTexDiffuse, 1);
@@ -181,20 +181,31 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
             VBO = glGenBuffers();
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-            FloatBuffer buffer = BufferUtils.createFloatBuffer(model.vertices.size() * 5);
+            FloatBuffer buffer = BufferUtils.createFloatBuffer(model.vertices.size() * 11);
             for (Vertex v : model.vertices) {
-                v.store(buffer);
+                v.pos.store(buffer);
+                v.uv.store(buffer);
+                v.tangent.store(buffer);
+                v.normal.store(buffer);
             }
             buffer.flip();
 
             glBufferData(GL_ARRAY_BUFFER, buffer, GL_STATIC_DRAW);
 
             // Init vertex attribute layout
+            final int stride = 11 * Float.BYTES;
+
             glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * Float.BYTES, 0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, false, stride, 0);
 
             glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * Float.BYTES, 3 * Float.BYTES);
+            glVertexAttribPointer(1, 2, GL_FLOAT, false, stride, 3 * Float.BYTES);
+
+            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(2, 3, GL_FLOAT, false, stride, 5 * Float.BYTES);
+
+            glEnableVertexAttribArray(3);
+            glVertexAttribPointer(3, 3, GL_FLOAT, false, stride, 8 * Float.BYTES);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
@@ -282,9 +293,15 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
 
         glUniform1i(posLightmap, 1);
         glUniform1i(posTexDiffuse, 2);
+        glUniform1i(posNormal, 3);
 
         // Upload uniform
         glUniformMatrix4(posMVPMatrix, false, buffer);
+
+        buffer.clear();
+        modelViewMatrix.store(buffer);
+        buffer.flip();
+        glUniformMatrix4(posWorldMatrix, false, buffer);
 
         // Bind VAO
         glBindVertexArray(VAO);
@@ -302,6 +319,8 @@ public class RendererNanosuit extends TileEntitySpecialRenderer {
             // textureManager.bindTexture(texs.diff);
             glActiveTexture(GL_TEXTURE2);
             textureManager.bindTexture(texs.diff);
+            glActiveTexture(GL_TEXTURE3);
+            textureManager.bindTexture(texs.normal);
             glActiveTexture(GL_TEXTURE0);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBOs.get(group));

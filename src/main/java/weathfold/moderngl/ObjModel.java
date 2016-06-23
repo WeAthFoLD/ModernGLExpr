@@ -5,7 +5,6 @@ import com.google.common.collect.Multimap;
 import org.lwjgl.util.vector.Vector2f;
 import org.lwjgl.util.vector.Vector3f;
 
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,21 +18,23 @@ public class ObjModel {
 
         public final Vector3f pos;
         public final Vector2f uv;
+        public final Vector3f tangent;
+        public final Vector3f normal;
 
         public Vertex(Vector3f pos, Vector2f uv) {
             this.pos = pos;
             this.uv = uv;
+            this.tangent = new Vector3f();
+            this.normal = new Vector3f();
         }
 
-        public void store(FloatBuffer buffer) {
-            pos.store(buffer);
-            uv.store(buffer);
-        }
     }
 
     public static class Face {
 
         public final int i0, i1, i2;
+        public final Vector3f tangent = new Vector3f();
+        public final Vector3f normal = new Vector3f();
 
         public Face(int i0, int i1, int i2) {
             this.i0 = i0;

@@ -1,6 +1,7 @@
 package weathfold.moderngl;
 
 import com.google.common.base.Throwables;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import net.minecraft.util.ResourceLocation;
@@ -98,6 +99,7 @@ public class ObjParser {
         // Convert into runtime format which is more GL-friendly
         List<Vertex> vertices = new ArrayList<>();
         Map<VertexIdt, Integer> generated = new HashMap<>();
+        Multimap<Integer, Face> vertFaceSharing = ArrayListMultimap.create();
 
         GenContext ctx = new GenContext(vs, vts, generated, vertices);
 
@@ -109,13 +111,56 @@ public class ObjParser {
                 int i1 = genIndex(ctx, new VertexIdt(face.v1, face.vt1));
                 int i2 = genIndex(ctx, new VertexIdt(face.v2, face.vt2));
 
-                ret.faces.put(group, new Face(i0, i1, i2));
+                Face f = new Face(i0, i1, i2);
+
+                // Calculate plane tangent
+                Vertex v1 = vertices.get(i0), v2 = vertices.get(i1), v3 = vertices.get(i2);
+                Vector3f edge1 = Vector3f.sub(v2.pos, v1.pos, null);
+                Vector3f edge2 = Vector3f.sub(v3.pos, v1.pos, null);
+                Vector2f duv1 = Vector2f.sub(v2.uv, v1.uv, null);
+                Vector2f duv2 = Vector2f.sub(v3.uv, v1.uv, null);
+
+                Vector3f t = f.tangent, n = f.normal;
+                float ff = 1.0f / (duv1.x * duv2.y - duv2.x * duv1.y);
+                t.x = ff * (duv2.y * edge1.x - duv1.y * edge2.x);
+                t.y = ff * (duv2.y * edge1.y - duv1.y * edge2.y);
+                t.z = ff * (duv2.y * edge1.z - duv1.y * edge2.z);
+
+                Vector3f.cross(edge1, edge2, n);
+
+                ret.faces.put(group, f);
+                vertFaceSharing.put(i0, f);
+                vertFaceSharing.put(i1, f);
+                vertFaceSharing.put(i2, f);
+            }
+        }
+
+        for (int i = 0; i < vertices.size(); ++i) {
+            Collection<Face> usedFaces = vertFaceSharing.get(i);
+            int s = usedFaces.size();
+            if (s != 0) {
+                Vector3f accum = new Vector3f(), accum1 = new Vector3f();
+                for (Face f : usedFaces) {
+                    Vector3f.add(f.tangent, accum, accum);
+                    Vector3f.add(f.normal, accum1, accum1);
+                }
+
+                accum.normalise();
+                accum1.normalise();
+                vertices.get(i).tangent.set(accum);
+                vertices.get(i).normal.set(accum1);
             }
         }
 
         ret.vertices.addAll(vertices);
 
         return ret;
+    }
+
+    private static void div(Vector3f v, float s) {
+        v.x /= s;
+        v.y /= s;
+        v.z /= s;
     }
 
     private static int genIndex(GenContext ctx, VertexIdt idt) {
